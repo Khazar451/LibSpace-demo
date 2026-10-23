@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0} img{max-width:100%} [hidden]{display:none!important}</style>
+<title>LibSpace Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Schibsted+Grotesk:wght@600;700;800&display=swap">
+<style>
+/* Layout: flow navigator (left) + a device frame (phone for patrons, tablet for staff) that swaps per screen ID. */
+:root {
+  --paper: #F3F5F2;      /* page ground, faint green bias */
+  --surface: #FFFFFF;    /* app surfaces */
+  --sunk: #E7ECE8;       /* insets, map floor */
+  --ink: #18231F;        /* text */
+  --muted: #5B6A64;      /* secondary text */
+  --line: #CBD5D0;       /* hairlines */
+  --lamp: #1E6B57;       /* accent: library-lamp green */
+  --lamp-ink: #FFFFFF;
+  --lamp-soft: #D7EAE3;
+  --ok: #2F7D4F;  --ok-soft: #DDF0E3;
+  --warn: #9A6200; --warn-soft: #FBEBCB;
+  --bad: #A93434;  --bad-soft: #F6DCDC;
+  --info: #2D5C8A; --info-soft: #DCE7F3;
+  --device: #1B2420;
+  --f-display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Figtree", "Segoe UI", Roboto, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "DejaVu Sans Mono", monospace;
+  --r: 12px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper:#101614; --surface:#18211E; --sunk:#202B27; --ink:#E6EEEA; --muted:#9DB0A8; --line:#33423C;
+  --lamp:#5CC2A0; --lamp-ink:#0B1411; --lamp-soft:#1E3A31;
+  --ok:#6CCB8F; --ok-soft:#1D3527; --warn:#E4B04F; --warn-soft:#3A2E14; --bad:#EE8B8B; --bad-soft:#3E1F1F; --info:#8DB8E6; --info-soft:#1C2C3D;
+  --device:#000000; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --paper:#101614; --surface:#18211E; --sunk:#202B27; --ink:#E6EEEA; --muted:#9DB0A8; --line:#33423C;
+  --lamp:#5CC2A0; --lamp-ink:#0B1411; --lamp-soft:#1E3A31;
+  --ok:#6CCB8F; --ok-soft:#1D3527; --warn:#E4B04F; --warn-soft:#3A2E14; --bad:#EE8B8B; --bad-soft:#3E1F1F; --info:#8DB8E6; --info-soft:#1C2C3D;
+  --device:#000000; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; max-width: 1400px; margin: 0 auto; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 18px; }
+.top h1 { font-family: var(--f-display); font-weight: 800; font-size: 1.6rem; margin: 0; letter-spacing: -0.01em; }
+.top p { margin: 0; color: var(--muted); }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0,1fr); } .nav { order: 2; } }
+
+/* Flow navigator */
+.nav { display: grid; gap: 14px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+@media (max-width: 860px) { .nav { position: static; } }
+.flow { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.flow h2 { font-family: var(--f-display); font-size: 0.95rem; margin: 0 0 2px; display: flex; gap: 8px; align-items: baseline; }
+.flow h2 { flex-wrap: wrap; }
+.flow h2 .uc { white-space: nowrap; font-family: var(--f-mono); font-size: 0.72rem; color: var(--muted); font-weight: 500; }
+.flow .crit { font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--warn); font-weight: 700; }
+.path { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; font-size: 0.78rem; }
+.path .lab { width: 100%; color: var(--muted); font-size: 0.72rem; margin-top: 2px; }
+.chip { font-family: var(--f-mono); font-size: 0.72rem; border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 2px 6px; cursor: pointer; }
+.chip:hover { border-color: var(--lamp); }
+.chip[aria-current="true"] { background: var(--lamp); color: var(--lamp-ink); border-color: var(--lamp); }
+.arrow { color: var(--muted); }
+
+/* Stage */
+.stage { display: grid; justify-items: center; gap: 12px; min-width: 0; }
+.screen-label { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: center; text-align: center; }
+.screen-label .id { font-family: var(--f-mono); font-weight: 700; background: var(--ink); color: var(--paper); border-radius: 6px; padding: 2px 8px; font-size: 0.8rem; }
+.screen-label .nm { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; }
+.screen-label .who { color: var(--muted); font-size: 0.85rem; }
+.hint { color: var(--muted); font-size: 0.82rem; max-width: 60ch; text-align: center; margin: 0; }
+
+.phone { width: 380px; max-width: 100%; background: var(--device); border-radius: 44px; padding: 14px; }
+.phone .scr { height: 760px; border-radius: 32px; }
+.tablet { width: 1000px; max-width: 100%; background: var(--device); border-radius: 26px; padding: 16px; }
+.tablet .scr { height: 640px; border-radius: 12px; }
+.scr { background: var(--paper); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+.overflow-x { overflow-x: auto; max-width: 100%; }
+
+/* App chrome */
+.status { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; padding: 10px 22px 4px; color: var(--ink); }
+.appbar { display: flex; align-items: center; gap: 10px; padding: 8px 18px 10px; }
+.appbar .back { border: 0; background: transparent; font-size: 1.3rem; cursor: pointer; padding: 0 4px; color: var(--ink); }
+.appbar h3 { font-family: var(--f-display); font-size: 1.15rem; margin: 0; flex: 1; }
+.appbar .brand { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.body { flex: 1; overflow-y: auto; padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 8px; }
+.card h4 { margin: 0; font-family: var(--f-display); font-size: 1rem; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 0.88rem; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-weight: 600; text-align: right; }
+.small { font-size: 0.8rem; color: var(--muted); margin: 0; }
+.btn { display: block; width: 100%; text-align: center; border: 1px solid var(--lamp); background: var(--lamp); color: var(--lamp-ink); border-radius: 10px; padding: 11px 14px; font-weight: 700; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--lamp); }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: var(--surface); }
+.btn.sim { background: transparent; border: 1px dashed var(--muted); color: var(--muted); font-weight: 500; font-size: 0.82rem; padding: 7px 10px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.row { display: flex; gap: 8px; } .row > * { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; letter-spacing: 0.02em; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); } .pill.info { background: var(--info-soft); color: var(--info); }
+.pill.neutral { background: var(--sunk); color: var(--muted); }
+.banner { border-radius: 10px; padding: 10px 12px; font-size: 0.85rem; display: grid; gap: 2px; }
+.banner.warn { background: var(--warn-soft); color: var(--warn); } .banner.bad { background: var(--bad-soft); color: var(--bad); }
+.banner.info { background: var(--info-soft); color: var(--info); } .banner.ok { background: var(--ok-soft); color: var(--ok); }
+.banner b { color: inherit; }
+.big { font-family: var(--f-mono); font-weight: 700; font-size: 2.6rem; letter-spacing: -0.02em; line-height: 1; }
+.center { text-align: center; justify-items: center; }
+.qr { width: 190px; height: 190px; background: #FFFFFF; padding: 10px; border-radius: 10px; border: 1px solid var(--line); }
+.qr svg { width: 100%; height: 100%; display: block; }
+.ring { height: 6px; background: var(--sunk); border-radius: 99px; overflow: hidden; width: 100%; }
+.ring > i { display: block; height: 100%; background: var(--lamp); }
+.ring.warn > i { background: var(--warn); }
+.notif { position: absolute; left: 12px; right: 12px; top: 34px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; font-size: 0.82rem; box-shadow: 0 8px 24px rgba(0,0,0,.18); display: grid; gap: 2px; z-index: 5; }
+.notif .src { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.steps { display: grid; gap: 8px; counter-reset: s; margin: 0; padding: 0; list-style: none; }
+.steps li { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; }
+.steps li::before { counter-increment: s; content: counter(s); font-family: var(--f-mono); font-weight: 700; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--sunk); font-size: 0.8rem; }
+.steps li.done::before { content: "✓"; background: var(--ok-soft); color: var(--ok); }
+.steps .phys { font-size: 0.72rem; color: var(--muted); }
+textarea, select, input[type=text] { font: inherit; width: 100%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 8px 10px; }
+label.fld { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); }
+.check { display: flex; gap: 8px; align-items: center; font-size: 0.88rem; }
+
+/* Desk map */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 0.75rem; color: var(--muted); }
+.legend span { display: inline-flex; gap: 5px; align-items: center; }
+.desk { min-width: 0; overflow: hidden; font-family: var(--f-mono); font-size: 0.72rem; font-weight: 700; border-radius: 7px; border: 1.5px solid var(--line); background: var(--surface); padding: 6px 1px; text-align: center; cursor: default; color: var(--ink); }
+.desk.av { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); cursor: pointer; }
+.desk.rs { border-style: dashed; color: var(--muted); }
+.desk.oc { background: var(--sunk); color: var(--muted); }
+.desk.br { background: var(--info-soft); color: var(--info); border-color: var(--info); }
+.desk.od { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); border-width: 2px; cursor: pointer; }
+.desk.me { outline: 3px solid var(--lamp); outline-offset: 1px; }
+.desk .s { display: block; font-size: 0.56rem; font-weight: 500; letter-spacing: -0.02em; overflow: hidden; text-overflow: clip; white-space: nowrap; }
+.map { background: var(--sunk); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.map .rowd { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.map .aisle { font-size: 0.65rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); text-align: center; }
+
+/* Staff terminal */
+.st { display: grid; grid-template-columns: 180px minmax(0,1fr); height: 100%; }
+.side { background: var(--ink); color: var(--paper); padding: 16px 12px; display: grid; align-content: start; gap: 4px; }
+.side .logo { font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; }
+.side .sub { font-size: 0.7rem; opacity: .7; margin-bottom: 14px; }
+.side button { text-align: left; background: transparent; border: 0; color: var(--paper); padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; opacity: .8; }
+.side button[aria-current="true"] { background: var(--lamp); color: var(--lamp-ink); opacity: 1; font-weight: 700; }
+.main { padding: 16px 20px; overflow-y: auto; display: grid; align-content: start; gap: 14px; }
+.main h3 { font-family: var(--f-display); font-size: 1.3rem; margin: 0; }
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.stat b { display: block; font-family: var(--f-mono); font-size: 1.4rem; }
+.stat span { font-size: 0.72rem; color: var(--muted); }
+.two { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap: 14px; }
+.alert { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--bad); border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; }
+.alert.w { border-left-color: var(--warn); }
+.alert .btn { width: auto; padding: 6px 10px; font-size: 0.8rem; }
+table.reg { width: 100%; border-collapse: collapse; font-size: 0.82rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+table.reg th, table.reg td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.reg th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--sunk); }
+table.reg td .btn { width: auto; padding: 4px 9px; font-size: 0.76rem; display: inline-block; }
+.timeline { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; font-size: 0.85rem; }
+.timeline li { display: grid; grid-template-columns: 56px 14px 1fr; gap: 8px; align-items: start; padding-bottom: 8px; }
+.timeline .t { font-family: var(--f-mono); color: var(--muted); font-size: 0.78rem; }
+.timeline .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lamp); margin-top: 5px; }
+.timeline .dot.bad { background: var(--bad); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 10px 18px; cursor: pointer; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--lamp); color: var(--lamp-ink); }
+table.pol { border-collapse: collapse; font-size: 0.85rem; width: 100%; background: var(--surface); }
+table.pol td, table.pol th { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
+table.pol th { background: var(--sunk); font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.toast { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; white-space: nowrap; z-index: 6; }
+@media (max-width: 860px) { .two { grid-template-columns: minmax(0,1fr); } .stats { grid-template-columns: repeat(3, minmax(0,1fr)); } .st { grid-template-columns: minmax(0,1fr); } .side { display: flex; flex-wrap: wrap; gap: 4px; } .side .logo, .side .sub { width: 100%; margin: 0; } .tablet .scr { height: auto; min-height: 640px; } }
+
+/* Screenshot mode (local only: index.html?shot) hides everything but the device */
+body.shot .top, body.shot .nav, body.shot .hint, body.shot .screen-label { display: none; }
+body.shot .layout { grid-template-columns: minmax(0,1fr); }
+body.shot .wrap { padding: 12px; }
+body.shot { background: #FFFFFF; }
+body.shot .btn.sim { display: none; }
+@media (prefers-reduced-motion: no-preference) { .notif, .toast { animation: drop .25s ease-out; } @keyframes drop { from { opacity: 0; transform: translateY(-6px); } } .toast { animation-name: none; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>LibSpace</h1>
+    <p>Navigable UI prototype for RAD-v1 · Group 2 · screens are not functional; buttons marked “Simulate” stand in for scanners, timers and external systems.</p>
+  </header>
+  <div class="layout">
+    <nav class="nav" id="nav" aria-label="Use-case paths"></nav>
+    <main class="stage" id="stage" aria-live="polite"></main>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Prototype state (example data, fictional) ----------
+  const S = { desk: "D-14", toast: "", notif: null, lateReturn: false, breaksLeft: 2 };
+  const reset = () => { S.desk = "D-14"; S.lateReturn = false; S.breaksLeft = 2; };
+
+  // ---------- Fake QR (decorative, deterministic) ----------
+  function qr(seed) {
+    let h = 0; for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const rnd = () => (h = (h * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const n = 25; let cells = "";
+    const finder = (x, y) => `<rect x="${x}" y="${y}" width="7" height="7" fill="#111"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/><rect x="${x+2}" y="${y+2}" width="3" height="3" fill="#111"/>`;
+    const inF = (x, y) => (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (!inF(x, y) && rnd() > 0.52) cells += `<rect x="${x}" y="${y}" width="1" height="1" fill="#111"/>`;
+    return `<div class="qr" role="img" aria-label="QR code (illustrative)"><svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/>${cells}${finder(0,0)}${finder(n-7,0)}${finder(0,n-7)}</svg></div>`;
+  }
+
+  // ---------- Chrome helpers ----------
+  const go = (id, label, cls = "btn") => `<button class="${cls}" data-go="${id}">${label}</button>`;
+  const sim = (id, label) => go(id, "Simulate: " + label, "btn sim");
+  const phone = (title, body, back) => `
+    <div class="status"><span class="mono">09:05</span><span>MCBU Kampüs</span><span>●●● 5G</span></div>
+    <div class="appbar">${back ? `<button class="back" data-go="${back}" aria-label="Back">‹</button>` : ""}<div style="flex:1"><div class="brand">LibSpace</div><h3>${title}</h3></div></div>
+    <div class="body">${body}</div>`;
+  const staffNav = (cur) => `
+    <aside class="side"><div class="logo">LibSpace Staff</div><div class="sub">Central Library · Floor 2 Silent Zone<br>Signed in: Zeynep K. (Library Staff)</div>
+      <button data-go="SCR-20" aria-current="${cur==='zone'}">Zone dashboard</button>
+      <button data-go="SCR-24" aria-current="${cur==='custody'}">Custody registry</button>
+      <button data-go="SCR-29" aria-current="${cur==='policy'}">Period policy</button>
+    </aside>`;
+  const staff = (cur, body) => `<div class="st">${staffNav(cur)}<div class="main">${body}</div></div>`;
+
+  function deskMap(opts = {}) {
+    const st = { "D-01":"oc","D-02":"av","D-03":"rs","D-04":"oc","D-05":"oc","D-06":"av","D-07":"br","D-08":"av","D-09":"oc","D-10":"rs","D-11":"oc","D-12":"av",
+                 "D-13":"oc","D-14":"av","D-15":"oc","D-16":"rs","D-17":"oc","D-18":"oc","D-19":"av","D-20":"oc","D-21":"br","D-22":"oc","D-23":"rs","D-24":"av",
+                 "D-25":"oc","D-26":"oc","D-27":"av","D-28":"oc","D-29":"rs","D-30":"oc","D-31":"od","D-32":"oc","D-33":"av","D-34":"oc","D-35":"oc","D-36":"rs", ...(opts.over||{}) };
+    if (!opts.staff) for (const k in st) if (st[k] === "od") st[k] = "oc";
+    const lbl = { av:"free", rs:"booked", oc:"in use", br:"break", od:"overdue" };
+    const ids = Object.keys(st);
+    const rows = [0,1,2,3,4,5].map(r => ids.slice(r*6, r*6+6));
+    const cell = id => {
+      const c = st[id]; const me = opts.me === id ? " me" : "";
+      const target = opts.link && opts.link[c] ? ` data-go="${opts.link[c]}" role="button" tabindex="0"` : "";
+      return `<div class="desk ${c}${me}"${target} aria-label="${id} ${lbl[c]}">${id.slice(2)}<span class="s">${lbl[c]}</span></div>`;
+    };
+    return `<div class="map">${rows.map((r,i) => `<div class="rowd">${r.map(cell).join("")}</div>${i===2?'<div class="aisle">— main aisle · turnstile ↓ —</div>':""}`).join("")}</div>
+      <div class="legend"><span><i class="desk av" style="width:14px;padding:4px 0"></i>Available</span><span><i class="desk rs" style="width:14px;padding:4px 0"></i>Reserved (booked)</span><span><i class="desk oc" style="width:14px;padding:4px 0"></i>Occupied</span><span><i class="desk br" style="width:14px;padding:4px 0"></i>On break</span>${opts.staff?'<span><i class="desk od" style="width:14px;padding:4px 0"></i>Break overdue</span>':""}</div>`;
+  }
+
+  // ---------- Screens ----------
+  const screens = {
+    "SCR-00": { name: "Sign In", who: "Patron · mobile app", dev: "phone", render: () => phone("Sign in", `
+      <div class="card center"><h4>LibSpace study zones</h4><p class="small">Reserve a desk, check in, and keep your seat fair for everyone.</p></div>
+      <div class="banner info"><b>Single sign-on</b>You sign in with your MCBU university account. LibSpace never sees your password.</div>
+      ${go("SCR-01", "Sign in with MCBU account")}
+      <p class="small">By continuing you accept the LibSpace privacy notice (KVKK).</p>`) },
+
+    "SCR-01": { name: "Home", who: "Patron · mobile app", dev: "phone", render: () => phone("Good morning, Elif", `
+      <div class="banner warn"><b>Exam period policy is active</b>Breaks up to 30 min · max 2 breaks per session · 6 h daily quota.</div>
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h4>Today’s reservation</h4><span class="pill info">Reserved</span></div>
+        <dl class="kv"><dt>Desk</dt><dd class="mono">${S.desk}</dd><dt>Zone</dt><dd>Floor 2 · Silent Study</dd><dt>Time</dt><dd class="mono">09:00 – 12:00</dd><dt>Gate open for you</dt><dd class="mono">08:45 – 09:15</dd></dl>
+        ${go("SCR-04", "Show gate pass")}
+        <button class="btn ghost" data-go="SCR-01" data-toast="Reservation cancelled (prototype: not applied)">Cancel reservation</button>
+      </div>
+      <div class="row">${go("SCR-02", "Find a desk", "btn ghost")}${go("SCR-12", "My fair-use", "btn ghost")}</div>
+      <div class="card"><h4>Property in custody</h4><p class="small">Nothing in custody.</p></div>`) },
+
+    "SCR-02": { name: "Desk Availability Map", who: "Patron · mobile app / kiosk", dev: "phone", render: () => phone("Find a desk", `
+      <div class="row"><select id="zone" aria-label="Zone"><option>Floor 2 · Silent Study</option><option>Floor 3 · Group-friendly</option></select></div>
+      <div class="row"><select id="day" aria-label="Day"><option>Today, 5 Jan</option><option>Tomorrow, 6 Jan</option></select><select id="from" aria-label="Start"><option>09:00</option><option>10:00</option></select></div>
+      ${deskMap({ link: { av: "SCR-03" } })}
+      <p class="small">Tap a free desk to reserve it. Showing availability for 09:00 – 12:00.</p>`, "SCR-01") },
+
+    "SCR-03": { name: "Reserve Desk", who: "Patron · mobile app / kiosk", dev: "phone", render: () => phone("Reserve desk", `
+      <div class="card"><h4>Desk <span class="mono">D-14</span> · Floor 2 Silent Study</h4>
+        <label class="fld" for="dur">Duration<select id="dur"><option>3 hours (09:00 – 12:00)</option><option>2 hours (09:00 – 11:00)</option><option>1 hour (09:00 – 10:00)</option></select></label>
+        <dl class="kv"><dt>Daily quota left after booking</dt><dd class="mono">3 h of 6 h</dd><dt>Active reservations</dt><dd class="mono">0 of 1</dd><dt>Arrive at the gate</dt><dd class="mono">08:45 – 09:15</dd></dl>
+        <p class="small">If you do not pass the gate by 09:15 the reservation expires and counts as a no-show strike. You can cancel free of charge until 09:00.</p>
+      </div>
+      <button class="btn" data-go="SCR-01" data-toast="Desk D-14 reserved for 09:00 – 12:00">Confirm reservation</button>
+      ${sim("SCR-14", "patron is suspended")}`, "SCR-02") },
+
+    "SCR-04": { name: "Gate Pass", who: "Patron · mobile app", dev: "phone", render: () => phone("Gate pass", `
+      <div class="card center">${qr("gate"+Date.now().toString().slice(0,-4))}
+        <p class="small">Hold this code under the turnstile scanner. The code changes every 30 s, so screenshots do not work.</p>
+        <div class="ring"><i style="width:62%"></i></div><p class="small mono">refreshes in 19 s</p></div>
+      <div class="card"><dl class="kv"><dt>Desk</dt><dd class="mono">${S.desk}</dd><dt>Gate open for you</dt><dd class="mono">08:45 – 09:15</dd></dl></div>
+      ${sim("SCR-05", "turnstile accepts the pass")}`, "SCR-01") },
+
+    "SCR-05": { name: "Find Your Desk (check-in window)", who: "Patron · mobile app", dev: "phone", render: () => phone("Go to your desk", `
+      <div class="card center"><p class="small">Scan the QR label on desk <b class="mono">${S.desk}</b> within</p><div class="big">09:42</div><div class="ring"><i style="width:97%"></i></div>
+        <p class="small">Gate passed at 08:58. If you don’t scan a desk in time, your reservation is released.</p></div>
+      ${deskMap({ me: S.desk, over: { [S.desk]: "rs" } })}
+      ${go("SCR-06", "Scan desk QR (" + S.desk + ")")}
+      ${sim("SCR-07", "scan free desk D-27 instead")}
+      ${sim("SCR-08", "10 minutes pass without a desk scan")}`) },
+
+    "SCR-06": { name: "Session Active", who: "Patron · mobile app", dev: "phone", render: () => phone("Studying", `
+      ${S.lateReturn ? `<div class="banner warn"><b>Late return recorded</b>You came back after your break limit. Repeated late returns can lead to your desk being cleared.</div>` : ""}
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h4>Desk <span class="mono">${S.desk}</span></h4><span class="pill ok">● Occupied</span></div>
+        <dl class="kv"><dt>Checked in</dt><dd class="mono">09:04</dd><dt>Session ends</dt><dd class="mono">12:00</dd><dt>Breaks left</dt><dd class="mono">${S.breaksLeft} of 2 · 30 min each</dd></dl></div>
+      ${go("SCR-09", "Take a break")}
+      ${go("SCR-15", "End session", "btn ghost")}
+      <p class="small">Leaving through the turnstile without starting a break ends your session and frees the desk.</p>`) },
+
+    "SCR-07": { name: "Move to Another Desk", who: "Patron · mobile app", dev: "phone", render: () => phone("Move desk?", `
+      <div class="card"><h4>You scanned desk <span class="mono">D-27</span></h4><p class="small">D-27 is free until 12:00. Your reservation can move there; desk D-14 will be released for others.</p>
+        <dl class="kv"><dt>From</dt><dd class="mono">D-14</dd><dt>To</dt><dd class="mono">D-27</dd><dt>Time</dt><dd class="mono">09:00 – 12:00 (unchanged)</dd></dl></div>
+      <button class="btn" data-go="SCR-06" data-set-desk="D-27" data-toast="Checked in at D-27">Move and check in</button>
+      ${go("SCR-05", "Keep D-14", "btn ghost")}
+      <div class="banner bad"><b>If the desk were not free</b>“D-27 is reserved by someone else. Scan your own desk D-14.” The check-in timer keeps running.</div>`) },
+
+    "SCR-08": { name: "Check-in Time Expired · Exit Pass", who: "Patron · mobile app", dev: "phone", render: () => phone("Reservation released", `
+      <div class="banner bad"><b>No desk scan within 10 minutes</b>Desk D-14 has been released. Your session is closed as forfeited.</div>
+      <div class="card center"><h4>Exit pass</h4>${qr("exit")}<p class="small">Single use. Scan it at the turnstile to leave.</p><div class="big">14:52</div><p class="small">After it expires, staff are alerted and your LibSpace passes stop working.</p></div>
+      <p class="small">No strike is recorded for this. Reserve again if a desk is free.</p>
+      ${go("SCR-01", "Back to home", "btn ghost")}`) },
+
+    "SCR-09": { name: "Take a Break", who: "Patron · mobile app", dev: "phone", render: () => phone("Take a break", `
+      <div class="card"><h4>Exam period break</h4>
+        <dl class="kv"><dt>Maximum length</dt><dd class="mono">30 min</dd><dt>Breaks left after this one</dt><dd class="mono">${Math.max(S.breaksLeft-1,0)} of 2</dd><dt>Reminder</dt><dd>10 min before the end</dd></dl>
+        <p class="small">Your desk stays yours. You can leave and re-enter with your gate pass. Scan your desk QR when you are back to end the break.</p></div>
+      <button class="btn" data-go="SCR-10" data-break="1">Start 30-minute break</button>
+      ${go("SCR-06", "Not now", "btn ghost")}
+      <div class="banner warn"><b>When no breaks are left</b>“You have used both breaks. Leaving now ends your session.” The break button is disabled.</div>`, "SCR-06") },
+
+    "SCR-10": { name: "On Break", who: "Patron · mobile app", dev: "phone", render: () => phone("On break", `
+      <div class="card center"><p class="small">Back at desk <b class="mono">${S.desk}</b> by <b class="mono">10:52</b></p><div class="big">23:41</div><div class="ring"><i style="width:79%"></i></div></div>
+      <div class="card center">${qr("break")}<p class="small">Gate pass for leaving and coming back.</p></div>
+      ${go("SCR-06", "I’m back: scan desk QR")}
+      ${sim("SCR-10", "10-minute reminder arrives")}
+      ${sim("SCR-11", "break limit passes")}`) },
+
+    "SCR-11": { name: "Break Overdue", who: "Patron · mobile app", dev: "phone", render: () => phone("Break overdue", `
+      <div class="banner bad"><b>Your break ended at 10:52</b>Desk ${S.desk} is now flagged as abandoned. Library staff may clear it and take your belongings into custody.</div>
+      <div class="card"><h4>Come back now</h4><p class="small">If you scan your desk QR before staff start clearing it, your session continues and a late return is recorded.</p></div>
+      <button class="btn" data-go="SCR-06" data-late="1">Scan desk QR</button>
+      ${sim("SCR-13", "staff have already cleared the desk")}
+      <div class="banner info"><b>If clearance has started</b>“Your desk is being cleared. Please go to the service desk.”</div>`) },
+
+    "SCR-12": { name: "Fair-Use Status", who: "Patron · mobile app", dev: "phone", render: () => phone("My fair-use", `
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h4>Strikes (last 30 days)</h4><span class="pill warn">1 of 3</span></div>
+        <div class="ring warn"><i style="width:33%"></i></div>
+        <dl class="kv"><dt>12 Dec · D-31</dt><dd>Desk cleared after overdue break</dd></dl>
+        <p class="small">3 strikes within 30 days suspend reservations for 7 days. Strikes expire 30 days after they are given.</p></div>
+      <div class="card"><h4>Today</h4><dl class="kv"><dt>Reserved time</dt><dd class="mono">3 h of 6 h</dd><dt>Active reservations</dt><dd class="mono">1 of 1</dd></dl></div>
+      <div class="card"><h4>Property in custody</h4><p class="small">None at the moment.</p>${go("SCR-13", "Example: view a retrieval tag", "btn ghost")}</div>`, "SCR-01") },
+
+    "SCR-13": { name: "Retrieval Tag", who: "Patron · mobile app", dev: "phone", render: () => phone("Retrieval tag", `
+      <div class="banner bad"><b>Your belongings were taken into custody</b>Desk D-31 was cleared at 14:41 after your break ran over. 1 strike recorded (1 of 3).</div>
+      <div class="card center">${qr("C-2027-0113")}<div class="mono" style="font-weight:700">C-2027-0113</div><p class="small">Show this tag and your student ID card at the service desk.</p></div>
+      <div class="card"><dl class="kv"><dt>Seal number</dt><dd class="mono">S-004512</dd><dt>Items</dt><dd>Black backpack, laptop charger</dd><dt>Collect at</dt><dd>Service desk, Floor 1</dd><dt>Collect by</dt><dd class="mono">20 Jan 2027</dd></dl>
+        <p class="small">Unclaimed items go to Campus Central Lost-and-Found after 15 days.</p></div>`, "SCR-12") },
+
+    "SCR-14": { name: "Reservation Blocked", who: "Patron · mobile app / kiosk", dev: "phone", render: () => phone("Can’t reserve", `
+      <div class="banner bad"><b>Reservations suspended until 12 Jan 2027</b>You reached 3 strikes in 30 days.</div>
+      <div class="card"><h4>Your strikes</h4><dl class="kv"><dt>19 Dec</dt><dd>Desk cleared (D-22)</dd><dt>28 Dec</dt><dd>No-show (D-08)</dd><dt>5 Jan</dt><dd>Desk cleared (D-19)</dd></dl></div>
+      <p class="small">You can still collect property in custody and use the library’s open areas.</p>
+      ${go("SCR-12", "See fair-use details", "btn ghost")}`, "SCR-02") },
+
+    "SCR-15": { name: "End Study Session", who: "Patron · mobile app", dev: "phone", render: () => phone("End session?", `
+      <div class="card"><h4>Leave desk <span class="mono">${S.desk}</span> now?</h4><p class="small">The desk is released immediately and unused reserved time is returned to your daily quota. Take your belongings with you.</p></div>
+      <button class="btn danger" data-go="SCR-01" data-toast="Session ended · desk released">End session</button>
+      ${go("SCR-06", "Keep studying", "btn ghost")}`, "SCR-06") },
+
+    // ---------- Staff terminal ----------
+    "SCR-20": { name: "Zone Dashboard", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("zone", `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>Floor 2 · Silent Study</h3><span class="pill warn">Exam period policy</span></div>
+      <div class="stats"><div class="stat"><b>9</b><span>Available</span></div><div class="stat"><b>6</b><span>Reserved</span></div><div class="stat"><b>18</b><span>Occupied</span></div><div class="stat"><b>2</b><span>On break</span></div><div class="stat"><b style="color:var(--bad)">1</b><span>Break overdue</span></div></div>
+      <div class="two"><div>${deskMap({ staff: true, link: { od: "SCR-21" } })}</div>
+        <div style="display:grid;gap:8px;align-content:start"><h4 style="margin:0;font-family:var(--f-display)">Needs attention</h4>
+          <div class="alert"><div><b class="mono">D-31</b> · break overdue by 11 min<br><span class="small">Can Y. · break started 14:00</span></div>${go("SCR-21","Open")}</div>
+          <div class="alert w"><div><b>Exit pass expired</b> · patron may still be inside<br><span class="small">Session for D-08 forfeited 13:30</span></div>${go("SCR-20","Dismiss","btn ghost")}</div>
+          <p class="small">Updates within 5 seconds of each scan.</p></div></div>`) },
+
+    "SCR-21": { name: "Desk Detail", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("zone", `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>Desk <span class="mono">D-31</span></h3><span class="pill bad">Break overdue · 11 min</span></div>
+      <div class="two"><div class="card"><h4>Session timeline</h4><ul class="timeline">
+          <li><span class="t">12:40</span><i class="dot"></i><span>Reserved 13:00 – 16:00</span></li>
+          <li><span class="t">12:58</span><i class="dot"></i><span>Passed the turnstile</span></li>
+          <li><span class="t">13:04</span><i class="dot"></i><span>Checked in at desk</span></li>
+          <li><span class="t">14:00</span><i class="dot"></i><span>Started 30-min break · left the zone 14:02</span></li>
+          <li><span class="t">14:20</span><i class="dot"></i><span>Reminder sent</span></li>
+          <li><span class="t">14:30</span><i class="dot bad"></i><span>Break limit passed · desk flagged</span></li></ul></div>
+        <div class="card"><h4>Patron</h4><dl class="kv"><dt>Name</dt><dd>Can Y.</dd><dt>Student no.</dt><dd class="mono">2203•••41</dd><dt>Strikes (30 days)</dt><dd class="mono">0 of 3</dd></dl>
+          <p class="small">Starting clearance locks the desk: the patron can no longer resume by scanning it.</p>
+          ${go("SCR-22", "Start clearance")}${go("SCR-20", "Back to zone", "btn ghost")}</div></div>`) },
+
+    "SCR-22": { name: "Clearance Intake", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("zone", `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>Clear desk <span class="mono">D-31</span></h3><span class="pill info">Pending clearance · started 14:41</span></div>
+      <div class="two"><ol class="steps">
+          <li class="done"><span>Bag the belongings and attach a numbered seal<br><span class="phys">Physical step, not recorded by the system</span></span><span></span></li>
+          <li class="done"><span>Scan the desk QR label</span><span class="pill ok">D-31 ✓</span></li>
+          <li class="done"><span>Scan the seal barcode</span><span class="pill ok">S-004512 ✓</span></li>
+          <li><span><label class="fld" for="desc">Describe the items<textarea id="desc" rows="2">Black backpack, laptop charger, 2 books</textarea></label></span><span></span></li></ol>
+        <div class="card"><h4>On confirmation the system will</h4><ul class="small" style="margin:0;padding-left:18px">
+            <li>create custody record C-2027-0113 (In custody, keep until 20 Jan)</li><li>free desk D-31</li><li>record 1 strike for the patron</li><li>send the retrieval tag to the patron</li></ul>
+          ${go("SCR-23", "Confirm intake")}${go("SCR-21", "Cancel clearance", "btn ghost")}
+          <div class="banner bad"><b>Wrong desk scanned</b>“You scanned D-30. Scan the label on D-31.”</div></div></div>`) },
+
+    "SCR-23": { name: "Intake Recorded", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("zone", `
+      <h3>Intake recorded</h3>
+      <div class="banner ok"><b>Custody record C-2027-0113 created</b>Seal S-004512 · desk D-31 · 14:44 · by Zeynep K.</div>
+      <div class="card"><dl class="kv"><dt>Desk D-31</dt><dd><span class="pill ok">Available</span></dd><dt>Patron strike</dt><dd>1 of 3 recorded</dd><dt>Retrieval tag</dt><dd>Sent by push and SMS</dd><dt>Bag goes to</dt><dd>Service desk custody shelf</dd></dl></div>
+      <div class="row" style="max-width:420px">${go("SCR-20", "Back to zone")}${go("SCR-24", "Open registry", "btn ghost")}</div>`) },
+
+    "SCR-24": { name: "Custody Registry", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("custody", `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>Custody registry</h3><div class="row" style="max-width:360px"><input type="text" id="find" aria-label="Search" value="" placeholder="Seal, custody ID or student no."></div></div>
+      <div class="overflow-x"><table class="reg"><thead><tr><th>Custody ID</th><th>Seal</th><th>Desk</th><th>Owner</th><th>Taken in</th><th>Status</th><th></th></tr></thead><tbody>
+        <tr><td class="mono">C-2027-0113</td><td class="mono">S-004512</td><td class="mono">D-31</td><td>Can Y.</td><td class="mono">05 Jan 14:44</td><td><span class="pill info">In custody</span></td><td>${go("SCR-25","Return")}</td></tr>
+        <tr><td class="mono">C-2027-0108</td><td class="mono">S-004497</td><td class="mono">D-05</td><td>Ece T.</td><td class="mono">04 Jan 18:10</td><td><span class="pill info">In custody</span></td><td>${go("SCR-25","Return")}</td></tr>
+        <tr><td class="mono">C-2026-0981</td><td class="mono">S-004133</td><td class="mono">D-22</td><td>Burak A.</td><td class="mono">19 Dec 11:02</td><td><span class="pill warn">Unclaimed · overdue</span></td><td>${go("SCR-28","Transfer")}</td></tr>
+        <tr><td class="mono">C-2026-0975</td><td class="mono">S-004120</td><td class="mono">D-12</td><td><i>Unattributed</i></td><td class="mono">18 Dec 08:15</td><td><span class="pill warn">Unclaimed · overdue</span></td><td>${go("SCR-28","Transfer")}</td></tr>
+        <tr><td class="mono">C-2026-0960</td><td class="mono">S-004101</td><td class="mono">D-31</td><td>Mert Ö.</td><td class="mono">16 Dec 15:30</td><td><span class="pill ok">Returned</span></td><td></td></tr>
+      </tbody></table></div>`) },
+
+    "SCR-25": { name: "Return Property · Verify Ownership", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("custody", `
+      <h3>Return property</h3>
+      <div class="two"><ol class="steps">
+          <li class="done"><span>Scan the seal barcode on the bag</span><span class="pill ok">S-004512 ✓</span></li>
+          <li class="done"><span>Scan the patron’s retrieval tag</span><span class="pill ok">C-2027-0113 ✓</span></li>
+          <li><span><label class="check" for="idchk"><input type="checkbox" id="idchk" checked> Student ID card checked: name matches Can Y.</label></span><span></span></li></ol>
+        <div class="card"><div class="banner ok"><b>Seal, tag and custody record match</b>Owner: Can Y. · student no. 2203•••41</div>
+          ${go("SCR-26", "Confirm handover")}${sim("SCR-27", "seal does not match the tag")}${go("SCR-24", "Cancel", "btn ghost")}</div></div>`) },
+
+    "SCR-26": { name: "Handover Recorded", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("custody", `
+      <h3>Handover recorded</h3>
+      <div class="banner ok"><b>C-2027-0113 · Claimed and returned</b>16:22 · handed over by Murat D. · receipt sent to the patron</div>
+      <p class="small">Hand the sealed bag to the patron.</p>
+      <div class="row" style="max-width:280px">${go("SCR-24", "Back to registry")}</div>`) },
+
+    "SCR-27": { name: "Ownership Mismatch", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("custody", `
+      <h3>Return property</h3>
+      <div class="banner bad"><b>Do not hand over this bag</b>Seal S-004497 belongs to custody record C-2027-0108 (Ece T.). The retrieval tag is for C-2027-0113 (Can Y.).</div>
+      <p class="small">Find the bag with seal S-004512 and scan it again. The mismatch has been logged.</p>
+      <div class="row" style="max-width:420px">${go("SCR-25", "Scan again")}${go("SCR-24", "Cancel", "btn ghost")}</div>`) },
+
+    "SCR-28": { name: "Transfer Unclaimed Property", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("custody", `
+      <h3>Transfer to Campus Central Lost-and-Found</h3>
+      <p class="small">These records passed the 15-day collection period. Scan each seal as you pack the items for transfer.</p>
+      <div class="overflow-x"><table class="reg"><thead><tr><th>Custody ID</th><th>Seal</th><th>Owner</th><th>Overdue since</th><th>Scanned</th></tr></thead><tbody>
+        <tr><td class="mono">C-2026-0981</td><td class="mono">S-004133</td><td>Burak A.</td><td class="mono">03 Jan</td><td><span class="pill ok">✓</span></td></tr>
+        <tr><td class="mono">C-2026-0975</td><td class="mono">S-004120</td><td><i>Unattributed</i></td><td class="mono">02 Jan</td><td><span class="pill ok">✓</span></td></tr></tbody></table></div>
+      <div class="row" style="max-width:520px">${go("SCR-24", "Confirm dispatch of 2 items", "btn")}${go("SCR-24", "Cancel", "btn ghost")}</div>
+      <p class="small">Owners are notified where their items went. Records become “Transferred to central custody”.</p>`) },
+
+    "SCR-29": { name: "Period Policy", who: "Library Staff · staff terminal", dev: "tablet", render: () => staff("policy", `
+      <h3>Period policy</h3>
+      <div class="seg" role="group" aria-label="Active period"><button aria-pressed="true" data-go="SCR-29">Exam period</button><button aria-pressed="false" data-go="SCR-29" data-toast="Prototype: policy switch is shown, not applied">Regular period</button></div>
+      <div class="overflow-x"><table class="pol"><thead><tr><th>Rule</th><th>Exam period</th><th>Regular period</th></tr></thead><tbody>
+        <tr><td>Maximum break length</td><td class="mono">30 min</td><td class="mono">90 min</td></tr>
+        <tr><td>Breaks per session</td><td class="mono">2</td><td class="mono">3</td></tr>
+        <tr><td>Daily reserved-time quota</td><td class="mono">6 h</td><td class="mono">8 h</td></tr>
+        <tr><td>Desk check-in window after the gate</td><td class="mono">10 min</td><td class="mono">10 min</td></tr></tbody></table></div>
+      <p class="small">Changes apply to breaks and reservations started after the switch. Every switch is logged with your name.</p>`) },
+  };
+
+  // ---------- Navigator ----------
+  const flows = [
+    { uc: "UC-01", name: "Check In to Desk", crit: true, paths: [["Main", ["SCR-01","SCR-04","SCR-05","SCR-06"]], ["Relocation", ["SCR-05","SCR-07","SCR-06"]], ["Timeout", ["SCR-05","SCR-08"]]] },
+    { uc: "UC-02", name: "Take a Break", crit: true, paths: [["Main", ["SCR-06","SCR-09","SCR-10","SCR-06"]], ["Overdue", ["SCR-10","SCR-11","SCR-06"]]] },
+    { uc: "UC-03", name: "Clear Abandoned Desk", crit: true, paths: [["Main", ["SCR-20","SCR-21","SCR-22","SCR-23"]], ["Patron side", ["SCR-11","SCR-13"]]] },
+    { uc: "UC-04", name: "Reclaim Custodied Property", crit: true, paths: [["Main", ["SCR-13","SCR-24","SCR-25","SCR-26"]], ["Mismatch", ["SCR-25","SCR-27"]]] },
+    { uc: "UC-05", name: "Reserve Desk", paths: [["Main", ["SCR-01","SCR-02","SCR-03","SCR-01"]], ["Suspended", ["SCR-03","SCR-14"]]] },
+    { uc: "Other", name: "Supporting use cases", paths: [["UC-13 Sign In", ["SCR-00"]], ["UC-07 End Session", ["SCR-15"]], ["UC-09 Fair-use", ["SCR-12"]], ["UC-12 Transfer", ["SCR-28"]], ["UC-11 Policy", ["SCR-29"]]] },
+  ];
+  const nav = document.getElementById("nav"), stage = document.getElementById("stage");
+  nav.innerHTML = flows.map(f => `<section class="flow"><h2>${f.name} <span class="uc">${f.uc}</span>${f.crit ? '<span class="crit">critical</span>' : ""}</h2>
+    ${f.paths.map(([lab, ids]) => `<div class="path"><span class="lab">${lab}</span>${ids.map(id => `<button class="chip" data-go="${id}" data-reset="${f.uc}">${id}</button>`).join('<span class="arrow">→</span>')}</div>`).join("")}</section>`).join("");
+
+  function render(id) {
+    const sc = screens[id] || screens["SCR-01"]; id = screens[id] ? id : "SCR-01";
+    stage.innerHTML = `<div class="screen-label"><span class="id">${id}</span><span class="nm">${sc.name}</span><span class="who">${sc.who}</span></div>
+      <div class="${sc.dev}"><div class="scr">${sc.render()}${S.notif ? `<div class="notif"><span class="src">Campus Notification Gateway · now</span>${S.notif}</div>` : ""}${S.toast ? `<div class="toast">${S.toast}</div>` : ""}</div></div>
+      <p class="hint">Click any button to move along the path. Chips on the left jump straight to a screen.</p>`;
+    nav.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-current", c.dataset.go === id ? "true" : "false"));
+    S.toast = ""; S.notif = null;
+  }
+  document.addEventListener("click", e => {
+    const t = e.target.closest("[data-go]"); if (!t) return;
+    e.preventDefault();
+    if (t.dataset.reset) reset();
+    if (t.dataset.setDesk) S.desk = t.dataset.setDesk;
+    if (t.dataset.toast) S.toast = t.dataset.toast;
+    if (t.dataset.late) S.lateReturn = true;
+    if (t.dataset.break) S.breaksLeft = Math.max(S.breaksLeft - 1, 0);
+    if (t.closest(".btn.sim") && t.dataset.go === "SCR-10") S.notif = "<b>LibSpace: 10 minutes of break left</b>Scan your desk QR at D-14 by 10:52 to keep your desk.";
+    if (t.dataset.go === "SCR-06" && document.querySelector('[data-go="SCR-06"][data-late]') === null && t.closest(".chip")) S.lateReturn = false;
+    const target = t.dataset.go;
+    if (location.hash.slice(1) === target) render(target); else location.hash = target;
+  });
+  document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches('.desk[data-go]')) { e.preventDefault(); e.target.click(); } });
+  window.addEventListener("hashchange", () => render(location.hash.slice(1)));
+  if (/[?&]shot\b/.test(location.search)) document.body.classList.add("shot");
+  render(location.hash.slice(1) || "SCR-01");
+})();
+</script>
+
+</body>
+</html>
