@@ -96,6 +96,7 @@ button { font: inherit; color: inherit; }
 .card h4 { margin: 0; font-family: var(--f-display); font-size: 1rem; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 0.88rem; }
 .kv dt { color: var(--muted); } .kv dd { margin: 0; font-weight: 600; text-align: right; }
+.kv dd.mono, .kv dd.nw { white-space: nowrap; }
 .small { font-size: 0.8rem; color: var(--muted); margin: 0; }
 .btn { display: block; width: 100%; text-align: center; border: 1px solid var(--lamp); background: var(--lamp); color: var(--lamp-ink); border-radius: 10px; padding: 11px 14px; font-weight: 700; cursor: pointer; }
 .btn.ghost { background: transparent; color: var(--lamp); }
@@ -137,6 +138,9 @@ label.fld { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); }
 .desk.rs { border-style: dashed; color: var(--muted); }
 .desk.oc { background: var(--sunk); color: var(--muted); }
 .desk.br { background: var(--info-soft); color: var(--info); border-color: var(--info); }
+.desk.acc { position: relative; }
+.desk.acc::after { content: "\267F"; position: absolute; top: 1px; right: 2px; font-size: 0.7rem; line-height: 1; color: var(--info); font-family: "DejaVu Sans", sans-serif; }
+.legend .acc-ico { font-family: "DejaVu Sans", sans-serif; color: var(--info); }
 .desk.od { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); border-width: 2px; cursor: pointer; }
 .desk.me { outline: 3px solid var(--lamp); outline-offset: 1px; }
 .desk .s { display: block; font-size: 0.56rem; font-weight: 500; letter-spacing: -0.02em; overflow: hidden; text-overflow: clip; white-space: nowrap; }
@@ -221,8 +225,8 @@ body.shot .btn.sim { display: none; }
   // ---------- Chrome helpers ----------
   const go = (id, label, cls = "btn") => `<button class="${cls}" data-go="${id}">${label}</button>`;
   const sim = (id, label) => go(id, "Simulate: " + label, "btn sim");
-  const phone = (title, body, back) => `
-    <div class="status"><span class="mono">09:05</span><span>MCBU Kampüs</span><span>●●● 5G</span></div>
+  const phone = (title, body, back, clock = "09:05") => `
+    <div class="status"><span class="mono">${clock}</span><span>MCBU Kampüs</span><span>●●● 5G</span></div>
     <div class="appbar">${back ? `<button class="back" data-go="${back}" aria-label="Back">‹</button>` : ""}<div style="flex:1"><div class="brand">LibSpace</div><h3>${title}</h3></div></div>
     <div class="body">${body}</div>`;
   const staffNav = (cur) => `
@@ -238,16 +242,19 @@ body.shot .btn.sim { display: none; }
                  "D-13":"oc","D-14":"av","D-15":"oc","D-16":"rs","D-17":"oc","D-18":"oc","D-19":"av","D-20":"oc","D-21":"br","D-22":"oc","D-23":"rs","D-24":"av",
                  "D-25":"oc","D-26":"oc","D-27":"av","D-28":"oc","D-29":"rs","D-30":"oc","D-31":"od","D-32":"oc","D-33":"av","D-34":"oc","D-35":"oc","D-36":"rs", ...(opts.over||{}) };
     if (!opts.staff) for (const k in st) if (st[k] === "od") st[k] = "oc";
+    if (opts.future) for (const k in st) if (st[k] !== "av") st[k] = "rs";   // a future interval only has free or booked desks
+    const acc = ["D-20", "D-26"];   // accessible desks (designated in UC-15, FR-10)
     const lbl = { av:"free", rs:"booked", oc:"in use", br:"break", od:"overdue" };
     const ids = Object.keys(st);
     const rows = [0,1,2,3,4,5].map(r => ids.slice(r*6, r*6+6));
     const cell = id => {
       const c = st[id]; const me = opts.me === id ? " me" : "";
       const target = opts.link && opts.link[c] ? ` data-go="${opts.link[c]}" role="button" tabindex="0"` : "";
-      return `<div class="desk ${c}${me}"${target} aria-label="${id} ${lbl[c]}">${id.slice(2)}<span class="s">${lbl[c]}</span></div>`;
+      const a = acc.includes(id);
+      return `<div class="desk ${c}${me}${a ? " acc" : ""}"${target} aria-label="${id} ${lbl[c]}${a ? ", accessible desk" : ""}">${id.slice(2)}<span class="s">${lbl[c]}</span></div>`;
     };
     return `<div class="map">${rows.map((r,i) => `<div class="rowd">${r.map(cell).join("")}</div>${i===2?'<div class="aisle">— main aisle · turnstile ↓ —</div>':""}`).join("")}</div>
-      <div class="legend"><span><i class="desk av" style="width:14px;padding:4px 0"></i>Available</span><span><i class="desk rs" style="width:14px;padding:4px 0"></i>Reserved (booked)</span><span><i class="desk oc" style="width:14px;padding:4px 0"></i>Occupied</span><span><i class="desk br" style="width:14px;padding:4px 0"></i>On break</span>${opts.staff?'<span><i class="desk od" style="width:14px;padding:4px 0"></i>Break overdue</span>':""}</div>`;
+      <div class="legend"><span><i class="desk av" style="width:14px;padding:4px 0"></i>Available</span><span><i class="desk rs" style="width:14px;padding:4px 0"></i>Reserved (booked)</span><span><i class="desk oc" style="width:14px;padding:4px 0"></i>Occupied</span><span><i class="desk br" style="width:14px;padding:4px 0"></i>On break</span><span><b class="acc-ico">\u267F</b>Accessible desk</span>${opts.staff?'<span><i class="desk od" style="width:14px;padding:4px 0"></i>Break overdue</span>':""}</div>`;
   }
 
   // ---------- Screens ----------
@@ -270,18 +277,18 @@ body.shot .btn.sim { display: none; }
 
     "SCR-02": { name: "Desk Availability Map", who: "Patron · mobile app / kiosk", dev: "phone", render: () => phone("Find a desk", `
       <div class="row"><select id="zone" aria-label="Zone"><option>Floor 2 · Silent Study</option><option>Floor 3 · Group-friendly</option></select></div>
-      <div class="row"><select id="day" aria-label="Day"><option>Today, 5 Jan</option><option>Tomorrow, 6 Jan</option></select><select id="from" aria-label="Start"><option>09:00</option><option>10:00</option></select></div>
-      ${deskMap({ link: { av: "SCR-03" } })}
-      <p class="small">Tap a free desk to reserve it. Showing availability for 09:00 – 12:00.</p>`, "SCR-01") },
+      <div class="row"><select id="day" aria-label="Day" style="flex:1.6"><option>Today, 4 Jan</option><option selected>Tomorrow, 5 Jan</option></select><select id="from" aria-label="Start"><option>09:00</option><option>10:00</option></select></div>
+      ${deskMap({ link: { av: "SCR-03" }, future: true })}
+      <p class="small">Tap a free desk to reserve it. Showing availability for 5 Jan, 09:00 – 12:00.</p>`, "SCR-01", "21:30") },
 
     "SCR-03": { name: "Reserve Desk", who: "Patron · mobile app / kiosk", dev: "phone", render: () => phone("Reserve desk", `
       <div class="card"><h4>Desk <span class="mono">D-14</span> · Floor 2 Silent Study</h4>
         <label class="fld" for="dur">Duration<select id="dur"><option>3 hours (09:00 – 12:00)</option><option>2 hours (09:00 – 11:00)</option><option>1 hour (09:00 – 10:00)</option></select></label>
-        <dl class="kv"><dt>Daily quota left after booking</dt><dd class="mono">3 h of 6 h</dd><dt>Active reservations</dt><dd class="mono">0 of 1</dd><dt>Arrive at the gate</dt><dd class="mono">08:45 – 09:15</dd></dl>
+        <dl class="kv"><dt>Date</dt><dd class="nw">Tomorrow, 5 Jan</dd><dt>Daily quota left after booking</dt><dd class="mono">3 h of 6 h</dd><dt>Active reservations after booking</dt><dd class="mono">1 of 1</dd><dt>Arrive at the gate</dt><dd class="mono">08:45 – 09:15</dd></dl>
         <p class="small">If you do not pass the gate by 09:15 the reservation expires and counts as a no-show strike. You can cancel free of charge until 09:00.</p>
       </div>
       <button class="btn" data-go="SCR-01" data-toast="Desk D-14 reserved for 09:00 – 12:00">Confirm reservation</button>
-      ${sim("SCR-14", "patron is suspended")}`, "SCR-02") },
+      ${sim("SCR-14", "patron is suspended")}`, "SCR-02", "21:30") },
 
     "SCR-04": { name: "Gate Pass", who: "Patron · mobile app", dev: "phone", render: () => phone("Gate pass", `
       <div class="card center">${qr("gate"+Date.now().toString().slice(0,-4))}
